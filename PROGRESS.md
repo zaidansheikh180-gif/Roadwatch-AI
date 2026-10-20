@@ -25,7 +25,7 @@ A feature must not be marked implemented merely because it appears in a specific
 | Progress tracking | Verified | `PROGRESS.md` |
 | Design system and implementation guidance | Verified | `DESIGN.md` |
 | Application source | Implemented; runtime not yet verified | React/Vite UI, local demo mode, Supabase client, SQL migration, and Edge Function source committed |
-| Automated build check | In progress | GitHub Actions workflow added; latest run pending |
+| Automated build check | Passed for application source | GitHub Actions type-check and production build passed on `44947c66e32783a606b2720bd6bae3d5f21a3c37`; later commits only corrected project-tracking documentation |
 | Manual and end-to-end testing | Not yet verified | Requires a local run and Supabase configuration |
 | Deployment | Not yet verified | Hosting and deployment configuration remain open |
 
