@@ -59,7 +59,7 @@ Deno.serve(async (request) => {
     const { error: uploadError } = await admin.storage.from('road-photos').upload(path, bytes, { contentType: photo.type, upsert: false });
     if (uploadError) return json({ error: 'Photo upload failed. The report was not saved.' }, 502);
     const { data: inserted, error: insertError } = await admin.from('reports').insert({
-      reporter_user_id: reporterUserId, tracking_token_hash: reporterUserId ? null : trackingHash,
+      reporter_user_id: reporterUserId, tracking_token_hash: trackingHash,
       description, latitude, longitude, location_label: locationLabel || 'Pinned location',
       photo_storage_path: path, lifecycle_status: 'Submitted', verification_status: 'Unverified', is_sample: false,
     }).select('id, description, latitude, longitude, location_label, photo_storage_path, lifecycle_status, verification_status, is_sample, created_at').single();

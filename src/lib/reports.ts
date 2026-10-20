@@ -2,7 +2,6 @@ import type { RoadReport, SubmitReportInput, SubmitReportResult, LifecycleStatus
 import { supabase, supabaseConfigured } from './supabase';
 
 const STORAGE_KEY = 'roadwatch-demo-reports-v1';
-const TRACKING_KEY = 'roadwatch-demo-tracking-v1';
 
 const demoReports: RoadReport[] = [
   { id: 'sample-1', description: 'Deep pothole near the junction. Drivers are swerving to avoid it.', latitude: 12.9718, longitude: 77.5942, locationLabel: 'MG Road, Bengaluru', photoUrl: '', lifecycleStatus: 'Under Review', verificationStatus: 'Unverified', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(), isSample: true, screeningStatus: 'Unavailable' },
@@ -70,16 +69,16 @@ export async function submitReport(input: SubmitReportInput): Promise<SubmitRepo
     return { report: mapRow(data.report as Record<string, unknown>), trackingCode: String(data.trackingCode) };
   }
 
-  const trackingCode = crypto.randomUUID().replaceAll('-', '').toUpperCase();
-  let photoUrl = '';
-  if (input.photo.size <= 1_000_000) {
-    photoUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result ?? ''));
-      reader.onerror = () => reject(new Error('Could not read the selected photo.'));
-      reader.readAsDataURL(input.photo);
-    });
+  if (input.photo.size > 1_000_000) {
+    throw new Error('Demo mode supports photos up to 1 MB so they can be saved in this browser. Connect Supabase to submit photos up to 8 MB.');
   }
+  const trackingCode = crypto.randomUUID().replaceAll('-', '').toUpperCase();
+  const photoUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => reject(new Error('Could not read the selected photo.'));
+    reader.readAsDataURL(input.photo);
+  });
   const report: RoadReport = {
     id: crypto.randomUUID(), description: input.description, latitude: input.latitude, longitude: input.longitude,
     locationLabel: input.locationLabel || 'Pinned location', photoUrl, lifecycleStatus: 'Submitted',
@@ -87,13 +86,9 @@ export async function submitReport(input: SubmitReportInput): Promise<SubmitRepo
     screeningStatus: 'Unavailable', trackingCode,
   };
   try {
-    const previous = readDemoReports();
-    writeDemoReports([report, ...previous]);
-    const tokens = JSON.parse(localStorage.getItem(TRACKING_KEY) ?? '{}') as Record<string, string>;
-    tokens[trackingCode] = report.id;
-    localStorage.setItem(TRACKING_KEY, JSON.stringify(tokens));
+    writeDemoReports([report, ...readDemoReports()]);
   } catch {
-    throw new Error('Browser storage is full or unavailable. No report was confirmed as saved; try a smaller photo.');
+    throw new Error('Browser storage is full or unavailable. No report was confirmed as saved; clear demo data or connect Supabase and retry.');
   }
   return { report, trackingCode };
 }
@@ -105,9 +100,7 @@ export async function trackReport(code: string): Promise<RoadReport> {
     if (error || !data?.report) throw new Error('No report was found for that tracking code.');
     return mapRow(data.report as Record<string, unknown>);
   }
-  const tokens = JSON.parse(localStorage.getItem(TRACKING_KEY) ?? '{}') as Record<string, string>;
-  const id = tokens[normalized];
-  const report = readDemoReports().find((item) => item.id === id);
+  const report = readDemoReports().find((item) => item.trackingCode === normalized);
   if (!report) throw new Error('No report was found for that tracking code in this browser. Demo tracking codes only work in the browser where the report was submitted.');
   return report;
 }
