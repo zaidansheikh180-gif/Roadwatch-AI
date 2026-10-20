@@ -5,9 +5,9 @@ const STORAGE_KEY = 'roadwatch-demo-reports-v1';
 const TRACKING_KEY = 'roadwatch-demo-tracking-v1';
 
 const demoReports: RoadReport[] = [
-  { id: 'sample-1', description: 'Deep pothole near the junction. Drivers are swerving to avoid it.', latitude: 12.9718, longitude: 77.5942, locationLabel: 'MG Road, Bengaluru', photoUrl: 'https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=900&q=80', lifecycleStatus: 'Under Review', verificationStatus: 'Unverified', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(), isSample: true, screeningStatus: 'Unavailable' },
-  { id: 'sample-2', description: 'Broken road surface and loose gravel in the left lane.', latitude: 12.9766, longitude: 77.5993, locationLabel: 'Brigade Road, Bengaluru', photoUrl: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=900&q=80', lifecycleStatus: 'Submitted', verificationStatus: 'Unverified', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 18).toISOString(), isSample: true, screeningStatus: 'Unavailable' },
-  { id: 'sample-3', description: 'Road edge has crumbled beside the footpath.', latitude: 12.9652, longitude: 77.6057, locationLabel: 'Richmond Road, Bengaluru', photoUrl: 'https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=900&q=80', lifecycleStatus: 'In Progress', verificationStatus: 'Reviewed', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 38).toISOString(), isSample: true, screeningStatus: 'Unavailable' },
+  { id: 'sample-1', description: 'Deep pothole near the junction. Drivers are swerving to avoid it.', latitude: 12.9718, longitude: 77.5942, locationLabel: 'MG Road, Bengaluru', photoUrl: '', lifecycleStatus: 'Under Review', verificationStatus: 'Unverified', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(), isSample: true, screeningStatus: 'Unavailable' },
+  { id: 'sample-2', description: 'Broken road surface and loose gravel in the left lane.', latitude: 12.9766, longitude: 77.5993, locationLabel: 'Brigade Road, Bengaluru', photoUrl: '', lifecycleStatus: 'Submitted', verificationStatus: 'Unverified', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 18).toISOString(), isSample: true, screeningStatus: 'Unavailable' },
+  { id: 'sample-3', description: 'Road edge has crumbled beside the footpath.', latitude: 12.9652, longitude: 77.6057, locationLabel: 'Richmond Road, Bengaluru', photoUrl: '', lifecycleStatus: 'In Progress', verificationStatus: 'Reviewed', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 38).toISOString(), isSample: true, screeningStatus: 'Unavailable' },
 ];
 
 function mapRow(row: Record<string, unknown>): RoadReport {
@@ -121,7 +121,7 @@ export async function updateReportStatus(id: string, lifecycleStatus: LifecycleS
       body: { reportId: id, lifecycleStatus, verificationStatus },
       headers: { Authorization: 'Bearer ' + token },
     });
-    if (error || !data?.success) throw new Error(error?.message ?? 'The review update was not confirmed.');
+    if (error || !data?.success) throw new Error(data?.error ?? error?.message ?? 'The review update was not confirmed.');
     return;
   }
   const reports = readDemoReports();

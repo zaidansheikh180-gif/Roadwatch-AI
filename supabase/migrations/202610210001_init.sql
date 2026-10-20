@@ -1,20 +1,17 @@
 -- RoadWatch AI MVP schema. Apply with: supabase db push
--- The public view deliberately omits tracking_token_hash and internal review notes.
+-- Public read access is provided through a restricted view; all writes use trusted operations.
 
 create extension if not exists pgcrypto;
 
 do $$ begin
   create type public.report_status as enum ('Submitted', 'Under Review', 'In Progress', 'Resolved', 'Rejected');
 exception when duplicate_object then null; end $$;
-
 do $$ begin
   create type public.verification_status as enum ('Unverified', 'Reviewed', 'Confirmed', 'Disputed');
 exception when duplicate_object then null; end $$;
-
 do $$ begin
   create type public.screening_status as enum ('Pending', 'Completed', 'Uncertain', 'Failed');
 exception when duplicate_object then null; end $$;
-
 do $$ begin
   create type public.app_role as enum ('citizen', 'admin');
 exception when duplicate_object then null; end $$;
@@ -87,7 +84,6 @@ create index if not exists ai_screenings_report_idx on public.ai_screenings (rep
 create or replace function public.touch_updated_at()
 returns trigger language plpgsql set search_path = public as $$
 begin new.updated_at = now(); return new; end $$;
-
 drop trigger if exists reports_touch_updated_at on public.reports;
 create trigger reports_touch_updated_at before update on public.reports
 for each row execute function public.touch_updated_at();
@@ -96,6 +92,50 @@ create or replace function public.is_admin()
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.user_roles where user_id = auth.uid() and role = 'admin')
 $$;
+
+-- One transaction updates status and writes its audit/review records together.
+create or replace function public.admin_update_report(
+  p_report_id uuid,
+  p_lifecycle_status public.report_status,
+  p_verification_status public.verification_status
+) returns boolean
+language plpgsql security definer set search_path = public as $$
+declare
+  current_report public.reports%rowtype;
+  review_decision text;
+begin
+  if auth.uid() is null or not public.is_admin() then
+    raise exception 'Administrator role required' using errcode = '42501';
+  end if;
+  select * into current_report from public.reports where id = p_report_id for update;
+  if not found then raise exception 'Report not found' using errcode = 'P0002'; end if;
+
+  update public.reports
+    set lifecycle_status = p_lifecycle_status, verification_status = p_verification_status
+    where id = p_report_id;
+
+  if current_report.lifecycle_status is distinct from p_lifecycle_status then
+    insert into public.report_status_history(report_id, actor_user_id, change_type, old_value, new_value)
+    values (p_report_id, auth.uid(), 'lifecycle', current_report.lifecycle_status::text, p_lifecycle_status::text);
+  end if;
+  if current_report.verification_status is distinct from p_verification_status then
+    insert into public.report_status_history(report_id, actor_user_id, change_type, old_value, new_value)
+    values (p_report_id, auth.uid(), 'verification', current_report.verification_status::text, p_verification_status::text);
+  end if;
+
+  review_decision := case
+    when p_lifecycle_status = 'Rejected' then 'Rejected'
+    when p_verification_status = 'Confirmed' then 'Confirmed'
+    when p_verification_status = 'Disputed' then 'Disputed'
+    else 'Reviewed'
+  end;
+  insert into public.report_reviews(report_id, reviewer_user_id, decision)
+  values (p_report_id, auth.uid(), review_decision);
+  return true;
+end $$;
+
+revoke all on function public.admin_update_report(uuid, public.report_status, public.verification_status) from public, anon;
+grant execute on function public.admin_update_report(uuid, public.report_status, public.verification_status) to authenticated;
 
 alter table public.reports enable row level security;
 alter table public.ai_screenings enable row level security;
@@ -113,7 +153,7 @@ drop policy if exists "Users can read their own role" on public.user_roles;
 create policy "Users can read their own role" on public.user_roles
 for select to authenticated using (user_id = auth.uid() or public.is_admin());
 
--- Views run with their owner's table privileges; this view deliberately returns only public fields.
+-- The view returns only public fields; it deliberately omits tracking hashes and reviewer notes.
 create or replace view public.public_reports as
 select
   r.id, r.description, r.latitude, r.longitude, r.location_label, r.photo_storage_path,
@@ -125,7 +165,6 @@ left join lateral (
   from public.ai_screenings a where a.report_id = r.id order by a.started_at desc limit 1
 ) latest on true
 where r.lifecycle_status <> 'Rejected';
-
 grant select on public.public_reports to anon, authenticated;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
