@@ -22,10 +22,11 @@ A feature must not be marked implemented merely because it appears in a specific
 | Implementation plan | Verified | `IMPLEMENTATION_PLAN.md` |
 | Project README | Verified | `README.md` |
 | System architecture | Verified | `ARCHITECTURE.md` |
-| Progress tracking | Created | `PROGRESS.md` |
+| Progress tracking | Verified | `PROGRESS.md` |
 | Design system and implementation guidance | Verified | `DESIGN.md` |
 | Application source | Implemented; runtime not yet verified | React/Vite UI, local demo mode, Supabase client, SQL migration, and Edge Function source committed |
-| Automated build check | In progress | GitHub Actions workflow added; latest run pending |\n| Manual and end-to-end testing | Not yet verified | Requires a local run and Supabase configuration |
+| Automated build check | In progress | GitHub Actions workflow added; latest run pending |
+| Manual and end-to-end testing | Not yet verified | Requires a local run and Supabase configuration |
 | Deployment | Not yet verified | Hosting and deployment configuration remain open |
 
 **Important:** “Verified” for a document means its repository contents were fetched and checked. It does not mean the proposed application features have been built or tested.
